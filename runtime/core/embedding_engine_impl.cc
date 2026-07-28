@@ -83,6 +83,20 @@ absl::StatusOr<std::unique_ptr<EmbeddingEngine>> EmbeddingEngineImpl::Create(
     return absl::InvalidArgumentError("Tokenizer cannot be null.");
   }
 
+  std::optional<BenchmarkInfo> benchmark_info =
+      settings.IsBenchmarkEnabled() ? std::make_optional<BenchmarkInfo>(
+                                          settings.GetBenchmarkParams().value())
+                                    : std::nullopt;
+
+  if (benchmark_info.has_value()) {
+    auto status =
+        benchmark_info->TimeInitPhaseStart(BenchmarkInfo::InitPhase::kTotal);
+    if (!status.ok()) return status;
+    status =
+        benchmark_info->TimeInitPhaseStart(BenchmarkInfo::InitPhase::kExecutor);
+    if (!status.ok()) return status;
+  }
+
   // Initialize the vision executor.
   std::unique_ptr<VisionExecutor> vision_executor = nullptr;
   if (resources->GetTFLiteModel(ModelType::kTfLiteVisionEncoder).ok() &&
@@ -108,9 +122,18 @@ absl::StatusOr<std::unique_ptr<EmbeddingEngine>> EmbeddingEngineImpl::Create(
           std::move(settings.GetMutableMainExecutorSettings()), env->env,
           std::move(resources)));
 
+  if (benchmark_info.has_value()) {
+    auto status =
+        benchmark_info->TimeInitPhaseEnd(BenchmarkInfo::InitPhase::kExecutor);
+    if (!status.ok()) return status;
+    status = benchmark_info->TimeInitPhaseEnd(BenchmarkInfo::InitPhase::kTotal);
+    if (!status.ok()) return status;
+  }
+
   return std::make_unique<EmbeddingEngineImpl>(
       std::move(env), std::move(tokenizer), std::move(embedding_executor),
-      std::move(vision_executor), std::move(audio_executor));
+      std::move(vision_executor), std::move(audio_executor),
+      std::move(benchmark_info));
 }
 
 EmbeddingEngineImpl::EmbeddingEngineImpl(
@@ -118,12 +141,14 @@ EmbeddingEngineImpl::EmbeddingEngineImpl(
     std::unique_ptr<::litert::support::Tokenizer> tokenizer,
     std::unique_ptr<EmbeddingExecutorBase> embedding_executor,
     std::unique_ptr<VisionExecutor> vision_executor,
-    std::unique_ptr<AudioExecutor> audio_executor)
+    std::unique_ptr<AudioExecutor> audio_executor,
+    std::optional<BenchmarkInfo> benchmark_info)
     : env_(std::move(env)),
       tokenizer_(std::move(tokenizer)),
       embedding_executor_(std::move(embedding_executor)),
       vision_executor_(std::move(vision_executor)),
-      audio_executor_(std::move(audio_executor)) {}
+      audio_executor_(std::move(audio_executor)),
+      benchmark_info_(std::move(benchmark_info)) {}
 
 absl::StatusOr<ExecutorInputs> EmbeddingEngineImpl::ProcessAndCombineContents(
     const std::vector<InputData>& contents) {
@@ -270,6 +295,22 @@ EmbeddingEngineImpl::ComputeEmbeddingBatch(
     batch_responses.push_back(std::move(response));
   }
   return batch_responses;
+}
+
+absl::StatusOr<BenchmarkInfo> EmbeddingEngineImpl::GetBenchmarkInfo() {
+  if (benchmark_info_.has_value()) {
+    return benchmark_info_.value();
+  }
+  return absl::InternalError(
+      "Benchmark is not enabled. Please make sure the BenchmarkParams is set "
+      "in the EmbeddingEngineSettings.");
+}
+
+absl::StatusOr<BenchmarkInfo*> EmbeddingEngineImpl::GetMutableBenchmarkInfo() {
+  if (!benchmark_info_.has_value()) {
+    return absl::InternalError("Benchmark is not enabled.");
+  }
+  return &benchmark_info_.value();
 }
 
 }  // namespace litert::lm

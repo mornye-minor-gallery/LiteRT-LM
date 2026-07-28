@@ -58,6 +58,12 @@ class EmbeddingEngine {
   virtual absl::StatusOr<std::vector<EmbeddingResponse>> ComputeEmbeddingBatch(
       const std::vector<std::vector<InputData>>& contents,
       const EmbeddingOptions& options) = 0;
+
+  // Returns the benchmark info of the engine.
+  virtual absl::StatusOr<BenchmarkInfo> GetBenchmarkInfo() = 0;
+
+  // Returns the mutable benchmark info of the engine.
+  virtual absl::StatusOr<BenchmarkInfo*> GetMutableBenchmarkInfo() = 0;
 };
 
 }  // namespace litert::lm

@@ -51,7 +51,9 @@ namespace {
 using ::litert::Environment;
 using ::litert::support::Tokenizer;
 using ::litert::support::TokenizerType;
+using ::testing::Contains;
 using ::testing::HasSubstr;
+using ::testing::Key;
 using ::testing::Return;
 using ::testing::status::StatusIs;
 
@@ -222,6 +224,55 @@ TEST(EmbeddingEngineImplTest, CreateSuccess) {
       EmbeddingEngineImpl::Create(std::move(resources), std::move(env),
                                   std::move(tokenizer), std::move(settings));
   EXPECT_OK(engine.status());
+}
+
+TEST(EmbeddingEngineImplTest, CreateWithBenchmarkEnabledSuccess) {
+  const std::string& model_path = (std::filesystem::path(::testing::SrcDir()) /
+                                   std::string(kTestEmbeddingModelPath))
+                                      .string();
+  ASSERT_OK_AND_ASSIGN(auto model_assets, ModelAssets::Create(model_path));
+  ASSERT_OK_AND_ASSIGN(auto resources, CreateTestModelResources(model_path));
+  ASSERT_OK_AND_ASSIGN(auto env, CreateTestEnvironment());
+  auto tokenizer = std::make_unique<MockTokenizer>();
+  ASSERT_OK_AND_ASSIGN(auto settings, EmbeddingEngineSettings::CreateDefault(
+                                          model_assets, Backend::CPU));
+
+  settings.GetMutableBenchmarkParams();
+
+  ASSERT_OK_AND_ASSIGN(
+      auto engine,
+      EmbeddingEngineImpl::Create(std::move(resources), std::move(env),
+                                  std::move(tokenizer), std::move(settings)));
+
+  ASSERT_OK_AND_ASSIGN(auto benchmark_info, engine->GetBenchmarkInfo());
+
+  const auto& init_phases = benchmark_info.GetInitPhases();
+  EXPECT_THAT(init_phases, Contains(Key("Init Total")));
+  EXPECT_THAT(init_phases, Contains(Key("Init Executor")));
+}
+
+TEST(EmbeddingEngineImplTest, BenchmarkDisabledGetFails) {
+  const std::string& model_path = (std::filesystem::path(::testing::SrcDir()) /
+                                   std::string(kTestEmbeddingModelPath))
+                                      .string();
+  ASSERT_OK_AND_ASSIGN(auto model_assets, ModelAssets::Create(model_path));
+  ASSERT_OK_AND_ASSIGN(auto resources, CreateTestModelResources(model_path));
+  ASSERT_OK_AND_ASSIGN(auto env, CreateTestEnvironment());
+  auto tokenizer = std::make_unique<MockTokenizer>();
+  ASSERT_OK_AND_ASSIGN(auto settings, EmbeddingEngineSettings::CreateDefault(
+                                          model_assets, Backend::CPU));
+
+  ASSERT_OK_AND_ASSIGN(
+      auto engine,
+      EmbeddingEngineImpl::Create(std::move(resources), std::move(env),
+                                  std::move(tokenizer), std::move(settings)));
+
+  EXPECT_THAT(engine->GetBenchmarkInfo(),
+              StatusIs(absl::StatusCode::kInternal,
+                       HasSubstr("Benchmark is not enabled")));
+  EXPECT_THAT(engine->GetMutableBenchmarkInfo(),
+              StatusIs(absl::StatusCode::kInternal,
+                       HasSubstr("Benchmark is not enabled")));
 }
 
 TEST(EmbeddingEngineImplTest, ComputeEmbeddingSuccess) {

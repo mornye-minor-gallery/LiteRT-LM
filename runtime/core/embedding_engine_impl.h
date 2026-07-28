@@ -16,6 +16,7 @@
 #define THIRD_PARTY_ODML_LITERT_LM_RUNTIME_CORE_EMBEDDING_ENGINE_IMPL_H_
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 #include "absl/status/statusor.h"  // from @com_google_absl
@@ -43,11 +44,13 @@ class EmbeddingEngineImpl : public EmbeddingEngine {
 
   // Constructs an `EmbeddingEngineImpl` with a LiteRT environment, a tokenizer
   // and executors.
-  EmbeddingEngineImpl(std::unique_ptr<OwnedEnvironment> env,
-                      std::unique_ptr<::litert::support::Tokenizer> tokenizer,
-                      std::unique_ptr<EmbeddingExecutorBase> embedding_executor,
-                      std::unique_ptr<VisionExecutor> vision_executor = nullptr,
-                      std::unique_ptr<AudioExecutor> audio_executor = nullptr);
+  EmbeddingEngineImpl(
+      std::unique_ptr<OwnedEnvironment> env,
+      std::unique_ptr<::litert::support::Tokenizer> tokenizer,
+      std::unique_ptr<EmbeddingExecutorBase> embedding_executor,
+      std::unique_ptr<VisionExecutor> vision_executor = nullptr,
+      std::unique_ptr<AudioExecutor> audio_executor = nullptr,
+      std::optional<BenchmarkInfo> benchmark_info = std::nullopt);
 
   ~EmbeddingEngineImpl() override = default;
 
@@ -61,6 +64,12 @@ class EmbeddingEngineImpl : public EmbeddingEngine {
       const std::vector<std::vector<InputData>>& contents,
       const EmbeddingOptions& options) override;
 
+  // Returns the benchmark info of the engine.
+  absl::StatusOr<BenchmarkInfo> GetBenchmarkInfo() override;
+
+  // Returns the mutable benchmark info of the engine.
+  absl::StatusOr<BenchmarkInfo*> GetMutableBenchmarkInfo() override;
+
  private:
   absl::StatusOr<ExecutorInputs> ProcessAndCombineContents(
       const std::vector<InputData>& contents);
@@ -70,6 +79,7 @@ class EmbeddingEngineImpl : public EmbeddingEngine {
   std::unique_ptr<EmbeddingExecutorBase> embedding_executor_;
   std::unique_ptr<VisionExecutor> vision_executor_;
   std::unique_ptr<AudioExecutor> audio_executor_;
+  std::optional<BenchmarkInfo> benchmark_info_;
 };
 
 }  // namespace litert::lm
