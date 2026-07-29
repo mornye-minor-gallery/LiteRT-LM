@@ -25,6 +25,7 @@ using ::litert::support::CopyToTensorBuffer;
 using ::litert::support::CreateTensorBuffer;
 using ::litert::support::DropTokensfromTensorBuffer;
 using ::litert::support::ElementTypeFor;
+using ::litert::support::MutateTensorBufferAsSpan;
 using ::litert::support::ReferTensorBufferAsSpan;
 }  // namespace litert::lm
 

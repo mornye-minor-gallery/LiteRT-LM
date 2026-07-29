@@ -34,12 +34,12 @@ absl::Status ConstrainedDecoder::ProcessLogits(::litert::TensorBuffer& logits) {
   LITERT_ASSIGN_OR_RETURN(auto logits_tensor_type, logits.TensorType());
   if (logits_tensor_type.ElementType() == ::litert::ElementType::Float32) {
     LITERT_ASSIGN_OR_RETURN(auto logits_span,
-                            ReferTensorBufferAsSpan<float>(logits));
+                            MutateTensorBufferAsSpan<float>(logits));
     return ProcessLogits(logits_span, logits_tensor_type.Layout().Dimensions());
   } else if (logits_tensor_type.ElementType() ==
              ::litert::ElementType::Float16) {
     LITERT_ASSIGN_OR_RETURN(auto logits_span,
-                            ReferTensorBufferAsSpan<tflite::half>(logits));
+                            MutateTensorBufferAsSpan<tflite::half>(logits));
     return ProcessLogits(logits_span, logits_tensor_type.Layout().Dimensions());
   }
   return absl::InvalidArgumentError(

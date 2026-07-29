@@ -69,12 +69,13 @@ absl::Status RepetitionPenaltyProcessor::ProcessLogits(
 
   if (element_type == ::litert::ElementType::Float32) {
     LITERT_ASSIGN_OR_RETURN(
-        auto span, ::litert::lm::ReferTensorBufferAsSpan<float>(logits));
+        auto span, ::litert::lm::MutateTensorBufferAsSpan<float>(logits));
     return ProcessLogits(absl::MakeSpan(span.data(), span.size()),
                          absl::MakeConstSpan(layout.Dimensions()));
   } else if (element_type == ::litert::ElementType::Float16) {
     LITERT_ASSIGN_OR_RETURN(
-        auto span, ::litert::lm::ReferTensorBufferAsSpan<tflite::half>(logits));
+        auto span,
+        ::litert::lm::MutateTensorBufferAsSpan<tflite::half>(logits));
     return ProcessLogits(absl::MakeSpan(span.data(), span.size()),
                          absl::MakeConstSpan(layout.Dimensions()));
   }
