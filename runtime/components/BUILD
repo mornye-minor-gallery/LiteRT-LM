@@ -77,6 +77,28 @@ cc_library(
 )
 
 cc_library(
+    name = "top_k_telemetry",
+    srcs = ["top_k_telemetry.cc"],
+    hdrs = ["top_k_telemetry.h"],
+    deps = [
+        ":sampling_cpu_util",
+        "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_test(
+    name = "top_k_telemetry_test",
+    srcs = ["top_k_telemetry_test.cc"],
+    deps = [
+        ":top_k_telemetry",
+        "@com_google_googletest//:gtest_main",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
     name = "scoring_cpu_util",
     srcs = ["scoring_cpu_util.cc"],
     hdrs = ["scoring_cpu_util.h"],

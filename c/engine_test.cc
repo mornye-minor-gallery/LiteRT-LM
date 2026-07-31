@@ -68,6 +68,12 @@ struct LiteRtLmJsonResponse {
 
 namespace {
 
+void IgnoreTopKTelemetry(void*, const LiteRtLmTopKTelemetryEvent*) {}
+void IgnoreTopKTelemetryRelease(void*) {}
+void CountTopKTelemetryRelease(void* user_data) {
+  ++*static_cast<int*>(user_data);
+}
+
 std::string GetTestdataPath(const std::string& filename) {
   std::string srcdir = ::testing::SrcDir();
   // On Windows, SrcDir() may return paths with backslashes. The LiteRT LM C API
@@ -509,6 +515,50 @@ TEST(EngineCTest, CreateConversationConfigWithNoSamplerParamsNoSystemMessage) {
   const auto& preface = std::get<litert::lm::JsonPreface>(
       conversation->conversation->GetConfig().GetPreface());
   EXPECT_EQ(preface.messages, nullptr);
+}
+
+TEST(EngineCTest, ConfigureTopKTelemetryValidatesAndStoresObserver) {
+  SessionConfigPtr session_config(litert_lm_session_config_create(),
+                                  &litert_lm_session_config_delete);
+  ASSERT_NE(session_config, nullptr);
+
+  EXPECT_NE(litert_lm_session_config_set_top_k_telemetry(
+                session_config.get(), 0, IgnoreTopKTelemetry,
+                IgnoreTopKTelemetryRelease, nullptr),
+            0);
+  EXPECT_NE(litert_lm_session_config_set_top_k_telemetry(
+                session_config.get(), 17, IgnoreTopKTelemetry,
+                IgnoreTopKTelemetryRelease, nullptr),
+            0);
+  EXPECT_NE(litert_lm_session_config_set_top_k_telemetry(
+                session_config.get(), 8, nullptr,
+                IgnoreTopKTelemetryRelease, nullptr),
+            0);
+
+  EXPECT_EQ(litert_lm_session_config_set_top_k_telemetry(
+                session_config.get(), 8, IgnoreTopKTelemetry,
+                IgnoreTopKTelemetryRelease, nullptr),
+            0);
+  const auto& telemetry =
+      session_config->config->GetTopKTelemetryConfig();
+  EXPECT_TRUE(telemetry.enabled());
+  EXPECT_EQ(telemetry.top_k, 8);
+  EXPECT_NE(telemetry.observer, nullptr);
+}
+
+TEST(EngineCTest, TopKTelemetryObserverReleasesUserDataExactlyOnce) {
+  int release_count = 0;
+  {
+    SessionConfigPtr session_config(litert_lm_session_config_create(),
+                                    &litert_lm_session_config_delete);
+    ASSERT_NE(session_config, nullptr);
+    ASSERT_EQ(litert_lm_session_config_set_top_k_telemetry(
+                  session_config.get(), 8, IgnoreTopKTelemetry,
+                  CountTopKTelemetryRelease, &release_count),
+              0);
+    EXPECT_EQ(release_count, 0);
+  }
+  EXPECT_EQ(release_count, 1);
 }
 
 TEST(EngineCTest, CreateConversationConfigWithSamplerBackend) {

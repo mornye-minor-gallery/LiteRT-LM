@@ -14,6 +14,8 @@
 
 #include "c/engine.h"
 
+#include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -38,6 +40,7 @@
 #include "runtime/conversation/io_types.h"
 #include "runtime/conversation/model_data_processor/config_registry.h"
 #include "runtime/conversation/model_data_processor/gemma4_data_processor_config.h"
+#include "runtime/components/top_k_telemetry.h"
 #include "runtime/engine/engine.h"
 #include "runtime/engine/engine_factory.h"
 #include "runtime/engine/engine_settings.h"
@@ -64,6 +67,58 @@ struct LiteRtLmSamplerParams {
 };
 
 namespace {
+
+class CTopKTelemetryObserver final
+    : public litert::lm::TopKTelemetryObserver {
+ public:
+  CTopKTelemetryObserver(LiteRtLmTopKTelemetryCallback callback,
+                         LiteRtLmTopKTelemetryReleaseCallback release_callback,
+                         void* user_data)
+      : callback_(callback),
+        release_callback_(release_callback),
+        user_data_(user_data) {}
+
+  ~CTopKTelemetryObserver() override {
+    if (release_callback_ != nullptr) {
+      release_callback_(user_data_);
+    }
+  }
+
+  void OnTopKTelemetry(
+      const litert::lm::TopKTelemetryEvent& event) override {
+    if (callback_ == nullptr) {
+      return;
+    }
+    std::array<LiteRtLmTopKTelemetryCandidate,
+               LITERT_LM_TOP_K_TELEMETRY_MAX_CANDIDATES>
+        candidates = {};
+    LiteRtLmTopKTelemetryEvent c_event = {};
+    c_event.abi_version = litert::lm::kTopKTelemetryAbiVersion;
+    c_event.batch_index = event.batch_index;
+    c_event.sequence_index = event.sequence_index;
+    c_event.sampled_token_id = event.sampled_token_id;
+    c_event.candidate_count = static_cast<int32_t>(
+        std::min(event.candidates.size(),
+                 static_cast<size_t>(
+                     LITERT_LM_TOP_K_TELEMETRY_MAX_CANDIDATES)));
+    c_event.top_k_entropy = event.top_k_entropy;
+    c_event.top1_top2_margin = event.top1_top2_margin;
+    c_event.metric_temperature =
+        litert::lm::kTopKTelemetryMetricTemperature;
+    for (int index = 0; index < c_event.candidate_count; ++index) {
+      candidates[index].token_id = event.candidates[index].token_id;
+      candidates[index].logit = event.candidates[index].logit;
+      candidates[index].probability = event.candidates[index].probability;
+    }
+    c_event.candidates = candidates.data();
+    callback_(user_data_, &c_event);
+  }
+
+ private:
+  LiteRtLmTopKTelemetryCallback callback_;
+  LiteRtLmTopKTelemetryReleaseCallback release_callback_;
+  void* user_data_;
+};
 
 absl::AnyInvocable<void(absl::StatusOr<litert::lm::Responses>)> CreateCallback(
     LiteRtLmStreamCallback callback, void* callback_data) {
@@ -425,6 +480,23 @@ void litert_lm_session_config_set_sampler_params(
     params.set_temperature(sampler_params->temperature);
     params.set_seed(sampler_params->seed);
   }
+}
+
+int litert_lm_session_config_set_top_k_telemetry(
+    LiteRtLmSessionConfig* config, int32_t top_k,
+    LiteRtLmTopKTelemetryCallback callback,
+    LiteRtLmTopKTelemetryReleaseCallback release_callback, void* user_data) {
+  if (!config || !config->config || callback == nullptr || top_k <= 0 ||
+      top_k > litert::lm::kMaxTopKTelemetryCandidates) {
+    return -1;
+  }
+  config->config->SetTopKTelemetryConfig(litert::lm::TopKTelemetryConfig{
+      .top_k = top_k,
+      .observer =
+          std::make_shared<CTopKTelemetryObserver>(
+              callback, release_callback, user_data),
+  });
+  return 0;
 }
 
 void litert_lm_session_config_delete(LiteRtLmSessionConfig* config) {

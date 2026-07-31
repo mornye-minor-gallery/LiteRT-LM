@@ -30,6 +30,7 @@
 #include "runtime/executor/audio_executor_settings.h"
 #include "runtime/executor/executor_settings_base.h"
 #include "runtime/executor/llm_executor_settings.h"
+#include "runtime/components/top_k_telemetry.h"
 #include "runtime/executor/vision_executor_settings.h"
 #include "runtime/proto/engine.pb.h"
 #include "runtime/proto/llm_metadata.pb.h"
@@ -226,6 +227,16 @@ class SessionConfig {
   Backend GetSamplerBackend() const;
   void SetSamplerBackend(Backend sampler_backend);
 
+  // Optional diagnostic observer for compact top-k sampling telemetry.
+  // Disabled by default. The observer is copied with the session config and
+  // scoped to the session lifetime.
+  const TopKTelemetryConfig& GetTopKTelemetryConfig() const {
+    return top_k_telemetry_config_;
+  }
+  void SetTopKTelemetryConfig(TopKTelemetryConfig config) {
+    top_k_telemetry_config_ = std::move(config);
+  }
+
   // Prompt templates:
   // Getters for the prompt templates.
 
@@ -306,6 +317,8 @@ class SessionConfig {
 
   // Backend to use for sampling.
   Backend sampler_backend_ = Backend::UNSPECIFIED;
+
+  TopKTelemetryConfig top_k_telemetry_config_;
 
   // Whether to apply the prompt templates in the session.
   bool apply_prompt_template_in_session_ = true;

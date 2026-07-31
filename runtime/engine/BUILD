@@ -301,6 +301,7 @@ cc_library(
         "@com_google_absl//absl/strings:string_view",
         "@litert//support/tokenizer",
         "//runtime/components:model_resources",
+        "//runtime/components:top_k_telemetry",
         "//runtime/executor:audio_executor_settings",
         "//runtime/executor:executor_settings_base",
         "//runtime/executor:llm_executor_settings",

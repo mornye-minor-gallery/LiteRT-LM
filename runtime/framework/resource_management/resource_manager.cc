@@ -597,6 +597,7 @@ ResourceManager::CreateContextHandler(const SessionConfig& session_config) {
       .output_heads = session_config.GetNumOutputCandidates(),
       // b/368348506 - Make tokens_per_decode configurable.
       .tokens_per_decode = 1,
+      .top_k_telemetry = session_config.GetTopKTelemetryConfig(),
   };
 
   std::unique_ptr<litert::lm::LlmContext> llm_context;

@@ -52,6 +52,7 @@
 #include "runtime/components/logits_processor/logits_processor.h"
 #include "runtime/components/model_resources.h"
 #include "runtime/components/sampler_factory.h"
+#include "runtime/components/top_k_telemetry.h"
 #include "runtime/executor/common_utils.h"
 #include "runtime/executor/executor_settings_base.h"
 #include "runtime/executor/litert_compiled_model_executor_utils.h"
@@ -78,6 +79,28 @@ using ::absl::Span;
 constexpr absl::string_view kPrefillSignatureRunner = "prefill";
 constexpr absl::string_view kDecodeSignatureRunner = "decode";
 constexpr int kDynamicDimValue = -1;
+
+absl::StatusOr<std::vector<float>> CopyTelemetryLogitsToFloat(
+    const TensorBuffer& logits) {
+  LITERT_ASSIGN_OR_RETURN(auto tensor_type, logits.TensorType());
+  if (tensor_type.ElementType() == ElementType::Float32) {
+    LITERT_ASSIGN_OR_RETURN(auto fp32_logits,
+                            CopyFromTensorBuffer<float>(logits));
+    return fp32_logits;
+  }
+  if (tensor_type.ElementType() == ElementType::Float16) {
+    LITERT_ASSIGN_OR_RETURN(auto fp16_logits,
+                            CopyFromTensorBuffer<tflite::half>(logits));
+    std::vector<float> fp32_logits;
+    fp32_logits.reserve(fp16_logits.size());
+    for (const auto value : fp16_logits) {
+      fp32_logits.push_back(static_cast<float>(value));
+    }
+    return fp32_logits;
+  }
+  return absl::InvalidArgumentError(
+      "Top-k telemetry only supports float32 and float16 logits.");
+}
 
 absl::Status InitializeEmbeddingLookups(
     litert::Environment& env, ModelResources& resources,
@@ -1468,8 +1491,61 @@ absl::Status LlmLiteRtCompiledModelExecutorBase::SampleLogits(
     RETURN_IF_ERROR(SwapSamplerInputTensors());
   }
 
+  std::optional<std::vector<TopKTelemetryEvent>> telemetry_events;
+  const auto& telemetry_config =
+      llm_context_->runtime_config().top_k_telemetry;
+  if (telemetry_config.enabled()) {
+    auto tensor_type = logits.TensorType();
+    if (!tensor_type.HasValue()) {
+      ABSL_LOG(WARNING) << "Top-k telemetry skipped: "
+                        << tensor_type.Error().Message();
+    } else {
+      const auto dimensions = tensor_type->Layout().Dimensions();
+      if (dimensions.size() < 2 || dimensions.size() > 3) {
+        ABSL_LOG(WARNING)
+            << "Top-k telemetry skipped: unsupported logits rank "
+            << dimensions.size();
+      } else {
+        const int batch_size = dimensions[0];
+        const int sequence_size =
+            dimensions.size() == 3 ? dimensions[1] : 1;
+        auto copied_logits = CopyTelemetryLogitsToFloat(logits);
+        if (!copied_logits.ok()) {
+          ABSL_LOG(WARNING)
+              << "Top-k telemetry skipped: " << copied_logits.status();
+        } else {
+          auto computed = ComputeTopKTelemetry(
+              *copied_logits, batch_size, sequence_size,
+              telemetry_config.top_k);
+          if (!computed.ok()) {
+            ABSL_LOG(WARNING)
+                << "Top-k telemetry skipped: " << computed.status();
+          } else {
+            telemetry_events = std::move(*computed);
+          }
+        }
+      }
+    }
+  }
+
   RETURN_IF_ERROR(sampler_->SampleToIdAndScoreBuffer(
       logits, ids_tensor, /*scores_tensor=*/nullptr));
+
+  if (telemetry_events.has_value()) {
+    auto sampled_ids = CopyFromTensorBuffer<int>(ids_tensor);
+    if (!sampled_ids.HasValue()) {
+      ABSL_LOG(WARNING)
+          << "Top-k telemetry omitted sampled token ids: "
+          << sampled_ids.Error().Message();
+    }
+    for (size_t index = 0; index < telemetry_events->size(); ++index) {
+      auto& event = (*telemetry_events)[index];
+      if (sampled_ids.HasValue() && index < sampled_ids->size()) {
+        event.sampled_token_id = (*sampled_ids)[index];
+      }
+      telemetry_config.observer->OnTopKTelemetry(event);
+    }
+  }
   return absl::OkStatus();
 }
 

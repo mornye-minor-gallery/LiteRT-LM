@@ -32,6 +32,7 @@
 #include "absl/status/statusor.h"  // from @com_google_absl
 #include "absl/strings/str_cat.h"  // from @com_google_absl
 #include "runtime/proto/sampler_params.pb.h"
+#include "runtime/components/top_k_telemetry.h"
 #include "runtime/executor/executor_settings_base.h"
 
 namespace litert::lm {
@@ -426,6 +427,10 @@ struct RuntimeConfig {
 
   // The number of tokens per decode function call.
   std::optional<int> tokens_per_decode;
+
+  // Optional session-scoped diagnostic telemetry. The shared observer keeps
+  // callback ownership stable while contexts move between executors.
+  TopKTelemetryConfig top_k_telemetry;
 };
 
 }  // namespace litert::lm

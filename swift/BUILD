@@ -35,6 +35,7 @@ swift_library(
         "ExperimentalFlags.swift",
         "LiteRTLMError.swift",
         "Message.swift",
+        "TopKTelemetry.swift",
         "Tool.swift",
         "ToolManager.swift",
     ],

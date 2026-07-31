@@ -98,6 +98,39 @@ typedef struct LiteRtLmSessionConfig LiteRtLmSessionConfig;
 // Opaque pointer for LiteRT LM Conversation Config.
 typedef struct LiteRtLmConversationConfig LiteRtLmConversationConfig;
 
+// Maximum number of top-k candidates that can cross the C ABI per token.
+#define LITERT_LM_TOP_K_TELEMETRY_MAX_CANDIDATES 16
+
+// One candidate in a compact top-k diagnostic snapshot.
+typedef struct {
+  int32_t token_id;
+  float logit;
+  float probability;
+} LiteRtLmTopKTelemetryCandidate;
+
+// Compact, versioned diagnostic snapshot for one decoded position.
+// `candidates[].probability` and `top_k_entropy` are normalized only across
+// the reported candidates at a fixed metric temperature of 1.0. They are not
+// full-vocabulary probabilities or entropy.
+typedef struct {
+  uint32_t abi_version;
+  int32_t batch_index;
+  int32_t sequence_index;
+  int32_t sampled_token_id;
+  int32_t candidate_count;
+  float top_k_entropy;
+  float top1_top2_margin;
+  float metric_temperature;
+  const LiteRtLmTopKTelemetryCandidate* candidates;
+} LiteRtLmTopKTelemetryEvent;
+
+// The event and candidates pointers are valid only for the duration of the
+// callback. Callers must copy any values they want to retain. The callback
+// must not re-enter the engine or mutate generation state.
+typedef void (*LiteRtLmTopKTelemetryCallback)(
+    void* user_data, const LiteRtLmTopKTelemetryEvent* event);
+typedef void (*LiteRtLmTopKTelemetryReleaseCallback)(void* user_data);
+
 // Represents the type of sampler.
 typedef enum {
   // Probabilistically pick among the top k tokens.
@@ -176,6 +209,19 @@ void litert_lm_session_config_set_apply_prompt_template(
 LITERT_LM_C_API_EXPORT
 void litert_lm_session_config_set_sampler_params(
     LiteRtLmSessionConfig* config, const LiteRtLmSamplerParams* sampler_params);
+
+// Enables compact top-k telemetry for this session.
+//
+// This is diagnostic-only and disabled by default. Enabling it can add a
+// GPU-to-CPU readback on GPU/Metal sampling paths. Only the compact top-k event
+// crosses the C ABI; full-vocabulary logits remain native.
+//
+// @return 0 on success, non-zero when the arguments are invalid.
+LITERT_LM_C_API_EXPORT
+int litert_lm_session_config_set_top_k_telemetry(
+    LiteRtLmSessionConfig* config, int32_t top_k,
+    LiteRtLmTopKTelemetryCallback callback,
+    LiteRtLmTopKTelemetryReleaseCallback release_callback, void* user_data);
 
 // Destroys a LiteRT LM Session Config.
 // @param config The config to destroy.
