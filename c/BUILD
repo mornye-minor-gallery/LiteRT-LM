@@ -92,6 +92,16 @@ cc_library(
     ],
 )
 
+cc_binary(
+    name = "top_k_telemetry_smoke",
+    srcs = ["top_k_telemetry_smoke.cc"],
+    target_compatible_with = select({
+        "@platforms//os:osx": [],
+        "//conditions:default": ["@platforms//:incompatible"],
+    }),
+    deps = [":engine"],
+)
+
 cc_test(
     name = "engine_test",
     srcs = ["engine_test.cc"],
