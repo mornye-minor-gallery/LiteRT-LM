@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_ODML_LITERT_LM_RUNTIME_EXECUTOR_LLM_EXECUTOR_BASE_H_
 #define THIRD_PARTY_ODML_LITERT_LM_RUNTIME_EXECUTOR_LLM_EXECUTOR_BASE_H_
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -41,6 +42,9 @@ namespace litert::lm {
 class LlmExecutorBase {
  public:
   virtual ~LlmExecutorBase() = default;
+  virtual absl::Status TransferState(bool (*transfer)(void*, size_t, void*), void* user_data, bool reading) {
+    return absl::UnimplementedError("KV state transfer unsupported executor");
+  }
 
   // ------------Input APIs------------:
   // Basic API to trigger the "prefill" or "prefix" process.

@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_ODML_LITERT_LM_RUNTIME_ENGINE_ENGINE_H_
 #define THIRD_PARTY_ODML_LITERT_LM_RUNTIME_ENGINE_ENGINE_H_
 
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -74,6 +75,9 @@ namespace litert::lm {
 // - Running the prefill and decode processes.
 class SessionInterface {
  public:
+  virtual absl::Status TransferState(bool (*transfer)(void*, size_t, void*), void* user_data, bool reading) {
+    return absl::UnimplementedError("KV state transfer unsupported session");
+  }
   // The TaskController is responsible for controlling the async task
   // execution.
   class TaskController {

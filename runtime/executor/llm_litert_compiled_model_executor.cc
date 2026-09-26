@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "runtime/executor/llm_litert_compiled_model_executor.h"
+#include "runtime/executor/pending_prefill_embeddings.h"
 
 #include <algorithm>
 #include <atomic>
@@ -571,6 +572,11 @@ absl::Status LlmLiteRtCompiledModelExecutorBase::PrefillInternal(
     // If there is no pending input token and no input token to prefill, we can
     // skip the prefill by storing the token as a pending input token.
     bool skip_prefill = !has_pending_input_token && prefill_length == 0;
+    if (has_pending_input_token && !use_token_as_lookup) {
+      ABSL_RETURN_IF_ERROR(internal::EnsurePendingPrefillEmbeddings(
+          *pending_input_token.front(), embedding_lookup_.get(),
+          per_layer_embedding_lookup_.get(), use_per_layer_embedding));
+    }
     if (!skip_prefill) {
       int input_idx = 0;
       if (has_pending_input_token) {

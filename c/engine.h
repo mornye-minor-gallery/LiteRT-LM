@@ -1421,6 +1421,11 @@ LiteRtLmTokenUnion* litert_lm_engine_get_start_token(LiteRtLmEngine* engine);
 LITERT_LM_C_API_EXPORT
 LiteRtLmTokenUnions* litert_lm_engine_get_stop_tokens(LiteRtLmEngine* engine);
 
+typedef bool (*LiteRtLmStateTransfer)(void* data, size_t size, void* user_data);
+LITERT_LM_C_API_EXPORT int litert_lm_session_transfer_state(
+    LiteRtLmSession* session, LiteRtLmStateTransfer transfer, void* user_data,
+    bool reading);
+
 #ifdef __cplusplus
 }  // extern "C"
 #endif

@@ -51,7 +51,7 @@ cc_library(
 
 cc_library(
     name = "threaded_execution_manager",
-    srcs = ["threaded_execution_manager.cc"],
+    srcs = ["threaded_execution_manager.cc", "kv_checkpoint_manager.cc"],
     hdrs = ["threaded_execution_manager.h"],
     local_defines = select({
         "//runtime/util:litert_lm_debugger_enabled": [

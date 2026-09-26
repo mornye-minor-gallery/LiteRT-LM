@@ -257,6 +257,7 @@ cc_library(
     name = "engine_lite",
     srcs = [
         "engine.cc",
+        "kv_checkpoint.cc",
         "error_reporter.cc",
     ],
     hdrs = [
@@ -277,6 +278,7 @@ cc_library(
     name = "engine_lite_cpu",
     srcs = [
         "engine.cc",
+        "kv_checkpoint.cc",
         "error_reporter.cc",
     ],
     hdrs = [
@@ -324,6 +326,7 @@ cc_library(
         "conversation.cc",
         "embedding_engine.cc",
         "engine.cc",
+        "kv_checkpoint.cc",
         "error_reporter.cc",
         "experimental.cc",
         "model_info.cc",
@@ -352,6 +355,7 @@ cc_library(
         "conversation.cc",
         "embedding_engine.cc",
         "engine.cc",
+        "kv_checkpoint.cc",
         "error_reporter.cc",
         "experimental.cc",
         "model_info.cc",
@@ -478,6 +482,7 @@ cc_binary(
         "conversation.cc",
         "embedding_engine.cc",
         "engine.cc",
+        "kv_checkpoint.cc",
         "error_reporter.cc",
         "experimental.cc",
         "model_info.cc",
@@ -512,4 +517,11 @@ cc_binary(
     ] + select({
         "//conditions:default": [],
     }),
+)
+
+
+cc_binary(
+    name = "libkvcheckpoint.dylib",
+    linkshared = True,
+    deps = [":engine_cpu"],
 )

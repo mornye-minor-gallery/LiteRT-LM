@@ -59,6 +59,7 @@ class RuntimeDebugger;
 // tasks, so thread safety interaction should be handled properly.
 class ThreadedExecutionManager : public ExecutionManager {
  public:
+  absl::Status TransferState(SessionId id, bool (*transfer)(void*, size_t, void*), void* user_data, bool reading) override;
   // Creates an ExecutionManager.
   // The ExecutionManager will take ownership of the executors and the sampler.
   // - tokenizer: The tokenizer used for encoding the text input. This is

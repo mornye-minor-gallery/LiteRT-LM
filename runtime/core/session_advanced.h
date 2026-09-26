@@ -222,6 +222,8 @@ class SessionAdvanced : public SessionInterface {
         session_id_, Engine::kDefaultTimeout);
   }
 
+  absl::Status TransferState(bool (*transfer)(void*, size_t, void*), void* user_data, bool reading) override;
+
   // TODO b/409401231 - Add unit tests for this function.
   absl::StatusOr<std::unique_ptr<SessionInterface>> Clone() override
       ABSL_LOCKS_EXCLUDED(mutex_);

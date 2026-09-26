@@ -210,6 +210,10 @@ class LockedLlmExecutor : public LlmExecutor {
     return llm_executor_->ExecutorBackendName();
   }
 
+  absl::Status TransferState(bool (*transfer)(void*, size_t, void*), void* user_data, bool reading) override {
+    return llm_executor_->TransferState(transfer, user_data, reading);
+  }
+
   absl::Status Prefill(const ExecutorInputs& inputs) override {
     return Prefill(inputs, ExecutorPrefillParams());
   }

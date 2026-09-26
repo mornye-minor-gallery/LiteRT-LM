@@ -1,5 +1,15 @@
 # LiteRT-LM
 
+## PetAI CPU KV checkpoint branch
+
+This branch contains PetAI's CPU session state-transfer extension and pending-token
+prefill fix, based on upstream commit `a327b494f874a319605e6fd7e3439678daa4d07d`.
+It is not an upgrade to upstream `main`.
+
+See [the fork guide](docs/PETAI_KV_CHECKPOINT.md) for the API contract, changed
+files, verification commands, and release roles. File storage and cache policy
+belong to the application, not this engine.
+
 LiteRT-LM is Google's **production-ready** orchestration layer to run LLMs with
 LiteRT, engineered for **high-performance**, **cross-platform** execution.
 

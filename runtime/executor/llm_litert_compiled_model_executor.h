@@ -60,6 +60,8 @@ class LlmLiteRtCompiledModelExecutorBase : public LlmExecutor {
  public:
   using LlmExecutor::Prefill;
 
+  absl::Status TransferState(bool (*transfer)(void*, size_t, void*), void* user_data, bool reading) override;
+
   // Input APIs:
   // Basic API to trigger the "prefill" or "prefix" process.
   // Input is token ids with shape `[batch, sequence_length]`

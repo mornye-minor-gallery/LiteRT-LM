@@ -26,6 +26,20 @@ package(
 licenses(["notice"])
 
 cc_library(
+    name = "pending_prefill_embeddings",
+    hdrs = ["pending_prefill_embeddings.h"],
+    deps = [":llm_executor_processed_tokens", "@com_google_absl//absl/status"],
+)
+
+cc_test(
+    name = "pending_prefill_embeddings_test",
+    srcs = ["pending_prefill_embeddings_test.cc"],
+    deps = [":pending_prefill_embeddings", ":llm_executor_processed_tokens",
+            "@com_google_absl//absl/status", "@com_google_googletest//:gtest_main"],
+)
+
+
+cc_library(
     name = "audio_executor_settings",
     srcs = ["audio/audio_executor_settings.cc"],
     hdrs = ["audio/audio_executor_settings.h"],
@@ -290,9 +304,10 @@ cc_test(
 
 cc_library(
     name = "llm_litert_compiled_model_executor",
-    srcs = ["llm_litert_compiled_model_executor.cc"],
+    srcs = ["llm_litert_compiled_model_executor.cc", "kv_checkpoint.cc"],
     hdrs = ["llm_litert_compiled_model_executor.h"],
     deps = [
+        ":kv_checkpoint_io",
         ":common_utils",
         ":executor_settings_base",
         ":litert_compiled_model_executor_utils",
@@ -303,6 +318,7 @@ cc_library(
         ":llm_executor_settings_utils",
         ":llm_litert_compiled_model_cache_utils",
         ":llm_litert_mtp_drafter",
+        ":pending_prefill_embeddings",
         ":llm_processed_context",
         ":state_interface",
         "@com_google_absl//absl/algorithm:container",
@@ -1376,3 +1392,5 @@ cc_test(
         "//runtime/util:test_utils",
     ],
 )
+
+cc_library(name = "kv_checkpoint_io", hdrs = ["kv_checkpoint_io.h"])

@@ -15,6 +15,7 @@
 #ifndef THIRD_PARTY_ODML_LITERT_LM_RUNTIME_FRAMEWORK_RESOURCE_MANAGEMENT_EXECUTION_MANAGER_H_
 #define THIRD_PARTY_ODML_LITERT_LM_RUNTIME_FRAMEWORK_RESOURCE_MANAGEMENT_EXECUTION_MANAGER_H_
 
+#include <cstddef>
 #include <atomic>
 #include <limits>
 #include <memory>
@@ -92,6 +93,9 @@ struct TaskInfo {
 // and sessions.
 class ExecutionManager {
  public:
+  virtual absl::Status TransferState(SessionId id, bool (*transfer)(void*, size_t, void*), void* user_data, bool reading) {
+    return absl::UnimplementedError("KV checkpoint requires threaded execution manager");
+  }
   virtual ~ExecutionManager() = default;
 
   // Waits until the task is done or the timeout is reached.

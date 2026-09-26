@@ -250,7 +250,7 @@ cc_test(
 
 cc_library(
     name = "session_advanced",
-    srcs = ["session_advanced.cc"],
+    srcs = ["session_advanced.cc", "kv_checkpoint_session.cc"],
     hdrs = ["session_advanced.h"],
     local_defines = select({
         "//runtime/util:litert_lm_debugger_enabled": [
