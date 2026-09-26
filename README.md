@@ -1,5 +1,17 @@
 # LiteRT-LM
 
+## PetAI fork
+
+PetAI's CPU KV state-transfer implementation is on
+[`petai/kv-checkpoint`](https://github.com/mornye-minor-gallery/LiteRT-LM/tree/petai/kv-checkpoint),
+not this `main` branch. See the
+[fork guide](https://github.com/mornye-minor-gallery/LiteRT-LM/blob/petai/kv-checkpoint/docs/PETAI_KV_CHECKPOINT.md)
+for the pinned upstream base, API contract, changed files, and tests.
+
+The KV engine is built from source. The `petai-ios-embedding-native-v1` release
+supplies separate embedding dependencies and remains in use. The
+`petai-v0.14.0-topk-poc.1` release is a separate telemetry experiment.
+
 LiteRT-LM is Google's **production-ready** orchestration layer to run LLMs with
 LiteRT, engineered for **high-performance**, **cross-platform** execution.
 
